@@ -1,40 +1,42 @@
+import express from 'express';
 // 生成した Prisma Client をインポート
-import { PrismaClient } from "./generated/prisma/client";
+import { PrismaClient } from './generated/prisma/client';
+
 const prisma = new PrismaClient({
-  // 実行されたクエリをログに表示する設定
+  // クエリが実行されたときに実際に実行したクエリをログに表示する設定
   log: ['query'],
 });
+const app = express();
 
-async function main() {
-  // Prisma Client を使ってデータベースに接続
-  console.log("Prisma Client を初期化しました。");
+// 環境変数が設定されていれば、そこからポート番号を取得する。なければ 8888 を使用する。
+const PORT = process.env.PORT || 8888;
 
-  // 現在のユーザー一覧を取得して表示
-  const usersBefore = await prisma.user.findMany();
-  console.log("Before ユーザー一覧:", usersBefore);
+// EJS をテンプレートエンジンとして設定
+app.set('view engine', 'ejs');
+app.set('views', './views');
 
-  // 新しいユーザーを追加
-  const newUser = await prisma.user.create({
-    data: {
-      name: `新しいユーザー ${new Date().toISOString()}`,
-    },
-  });
-  console.log("新しいユーザーを追加しました:", newUser);
+// form のデータを受け取れるように設定
+app.use(express.urlencoded({ extended: true }));
 
-  // もう一度ユーザー一覧を取得して表示
-  const usersAfter = await prisma.user.findMany();
-  console.log("After ユーザー一覧:", usersAfter);
-}
+// ルートハンドラー: ユーザー一覧を表示する
+app.get('/', async (req, res) => {
+  const users = await prisma.user.findMany(); // DBから全ユーザーを取得
+  res.render('index', { users }); // 'index.ejs' を使って画面を描画し、usersデータを渡す
+});
 
-// main 関数を実行する
-main()
-  .catch(e => {
-    // エラーが発生した場合はメッセージを表示
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    // 最後に必ず Prisma Client との接続を切断する
-    await prisma.$disconnect();
-    console.log("Prisma Client を切断しました。");
-  });
+// ユーザー追加ハンドラー
+app.post('/users', async (req, res) => {
+  const name = req.body.name; // フォームから送信された名前を取得
+  if (name) {
+    const newUser = await prisma.user.create({
+      data: { name },
+    });
+    console.log('新しいユーザーを追加しました:', newUser);
+  }
+  res.redirect('/'); // ユーザー追加後、一覧ページにリダイレクト
+});
+
+// サーバーを起動
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
+});
