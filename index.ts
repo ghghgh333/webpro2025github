@@ -27,9 +27,11 @@ app.get('/', async (req, res) => {
 // ユーザー追加ハンドラー
 app.post('/users', async (req, res) => {
   const name = req.body.name; // フォームから送信された名前を取得
+  const age = req.body.age ? Number(req.body.age) : null; // フォームから送信された年齢を取得
+
   if (name) {
     const newUser = await prisma.user.create({
-      data: { name },
+      data: { name, age }, // 年齢も保存
     });
     console.log('新しいユーザーを追加しました:', newUser);
   }
